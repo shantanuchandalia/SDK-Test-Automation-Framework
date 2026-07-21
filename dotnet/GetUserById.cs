@@ -3,7 +3,7 @@ using System.IO;
 using System.Text.Json;
 
 /// <summary>
-/// SDK demo method: getUserById (.NET / C# implementation).
+/// Example SDK operation: getUserById (.NET / C# implementation).
 ///
 /// Reads user records from the shared flat file (data/users.json) and
 /// returns the username for a given user ID. Uses the built-in

@@ -1,4 +1,4 @@
-"""SDK demo method: getUserById (Python implementation).
+"""Example SDK operation: getUserById (Python implementation).
 
 Reads user records from the shared flat file (data/users.json) and
 returns the username for a given user ID.

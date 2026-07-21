@@ -1,28 +1,88 @@
-# SDK Automation Framework — getUserById Demo
+# SDK Test Automation Framework
 
 [![CI](https://github.com/shantanuchandalia/SDK-Test-Automation-Framework/actions/workflows/ci.yml/badge.svg)](https://github.com/shantanuchandalia/SDK-Test-Automation-Framework/actions/workflows/ci.yml)
 
-Demo SDK method `getUserById` implemented in three languages, all reading
-the same flat file (`data/users.json`) and returning the username for a
-given user ID. One TestNG suite runs the same scenarios with the same
-assertions against all three implementations.
+A test-automation framework for SDKs shipped in multiple languages.
+Write a behavioural scenario once, and one TestNG suite asserts the same
+expectations against every language implementation — Java, Python, and
+.NET out of the box, with a small seam for adding more. Fork it, swap in
+your SDK, and keep the test layer.
+
+## What this achieves
+
+Teams that ship the same SDK in several languages hit two problems:
+
+1. **Behaviour drift.** Implementations diverge silently: one handles an
+   edge case, another crashes on it, a third returns something subtly
+   different. Nothing catches it because each language is tested (or
+   not) in its own silo.
+2. **Staffing.** Testing three language SDKs the obvious way needs QA
+   engineers fluent in Java *and* Python *and* C#. Those are rare —
+   and you shouldn't need them.
+
+The framework's answer to both: the **entire test layer — scenarios,
+test data, assertions, reporting — is plain Java + TestNG**, the stack
+most SDET/QAE teams already work in. The invoker layer executes each
+language's SDK behind one interface, so a Java-skilled QA engineer
+writes and maintains parity tests for every language without writing a
+line of Python or C#. The only non-Java code in the picture is the SDK
+under test itself — which belongs to the SDK developers, not QA.
+
+Concretely, cross-language parity becomes a tested contract:
+
+- **One suite, one assertion path.** Every language implementation runs
+  the same scenarios through the same assertions — parity is proven, not
+  assumed.
+- **Operations scale by data, not boilerplate.** Adding an SDK operation
+  is one registry entry plus one data-driven test method. No per-language
+  test classes, no per-language invocation code.
+- **Languages scale by one interface.** Adding a language means
+  implementing a single small strategy interface and one enum constant.
+- **Missing toolchains skip, they don't fail.** If a machine lacks the
+  .NET SDK, those cases are reported as skipped with the reason — the
+  other languages still run and the suite stays green.
+- **Evidence built in.** Per-SDK grouped ExtentReports HTML output, and
+  CI that runs the full three-language suite on every push.
+
+## How it works
+
+Tests call `Invoker.invoke(sdk, "operationName", args...)`. The
+`OperationRegistry` maps the operation name to its per-language binding
+(`OperationSpec`); a per-language `SdkInvocationStrategy` then executes
+it — the Java SDK in-JVM via reflection, Python and .NET as CLI
+subprocesses. Whatever comes back is normalized into one `Result`
+(`exitCode`, parsed `value`, raw output) that the shared assertions in
+`BaseTest` consume.
+
+See [framework-flow.mermaid](framework-flow.mermaid) for the overview and
+[framework-flow-detailed.mermaid](framework-flow-detailed.mermaid) for the
+package/class-level drilldown.
+
+### The cross-language contract
+
+The single suite can treat all languages identically because every SDK
+implementation honours the same convention:
+
+| Behaviour   | Exit code | Stdout                              |
+|-------------|-----------|-------------------------------------|
+| Success     | 0         | `operation(args) -> result`         |
+| Not found   | 1         | message without the `-> ` marker    |
+| Bad input   | 2         | `ERROR: ...`                        |
+
+Implement this contract in your SDK's CLI surface and the framework needs
+no other knowledge of the language.
 
 ## Structure
 
 ```
-SDK Automation Framework/
+SDK Test Automation Framework/
 ├── .github/workflows/ci.yml  # GitHub Actions: full suite on every push/PR
 ├── data/
-│   └── users.json            # shared flat file (single source of truth)
-├── java/
-│   └── GetUserById.java      # plain JDK 11+, no dependencies
-├── dotnet/
-│   ├── GetUserById.cs        # C# console app, System.Text.Json (built-in)
-│   ├── GetUserById.csproj    # .NET 8
-│   └── NuGet.config          # clears package sources (offline build, zero deps)
-├── python/
-│   └── get_user_by_id.py     # Python 3.8+, stdlib only
-├── tests/                    # Maven + TestNG automation framework
+│   └── users.json            # example shared fixture (single source of truth)
+├── java/                     # example SDK implementation: Java (plain JDK 11+)
+├── python/                   # example SDK implementation: Python 3.8+, stdlib only
+├── dotnet/                   # example SDK implementation: .NET 8, zero packages
+├── tests/                    # the framework: Maven + TestNG
 │   ├── pom.xml               # TestNG 7.10.2 + ExtentReports 5.1.2
 │   ├── testng.xml            # suite: sdk.tests.SdkOperationTest
 │   └── src/test/java/sdk/
@@ -42,64 +102,81 @@ SDK Automation Framework/
 │           └── dotnet/DotnetInvocationStrategy.java   # CLI: dotnet <dll> <args> + build probe
 ├── docs/
 │   └── ExtentReport-sample.html  # sample of the generated HTML report
-├── framework-flow.mermaid    # architecture flow diagram (simple overview)
-└── framework-flow-detailed.mermaid  # same flow, drilldown to package/class level
+├── framework-flow.mermaid           # architecture overview diagram
+└── framework-flow-detailed.mermaid  # same flow, package/class-level drilldown
 ```
 
-## Running the test suite
+## Running the suite
 
-From `tests/` (needs Maven, JDK 11+, Python 3; .NET 8 SDK optional — see below):
+From `tests/` (needs Maven, JDK 11+, Python 3; .NET 8 SDK optional):
 
 ```
 mvn test
 ```
 
-- 23 tests: 7 BVA cases (100, 101, 103, 105, 106, 0, -1) x 3 languages,
-  plus a bad-input (exit code 2) case for each CLI-invoked SDK
-- The .NET SDK is built automatically once per suite if its DLL is missing
-- **Missing toolchains skip, they don't fail:** if the .NET 8 SDK is not
-  installed, the .NET cases are reported as skipped (with the reason) and
-  the Java and Python legs still run
-- Extent report: `tests/target/ExtentReport.html`
-- TestNG/Surefire reports land in `tests/target/surefire-reports/`
-- CI runs the full three-language suite on every push (see badge above)
+- 23 tests with the included example: 7 boundary-value cases x 3
+  languages, plus a bad-input (exit code 2) case per CLI-invoked SDK
+- The .NET project is built automatically once per suite if its DLL is missing
+- Missing toolchains skip with a reason instead of failing the suite
+- Extent report: `tests/target/ExtentReport.html`; Surefire reports in
+  `tests/target/surefire-reports/`
 
 ### Testing model: in-JVM vs CLI
 
 The Java SDK is tested **in-JVM at the library layer** (a direct call to
-`getUserById(int)` — its CLI `main()` wrapper is not exercised). The
-Python and .NET SDKs are tested **at the process level through their CLI
-entry points**, which additionally covers their argument parsing and exit
+the SDK method — its CLI `main()` wrapper is not exercised). The Python
+and .NET SDKs are tested **at the process level through their CLI entry
+points**, which additionally covers their argument parsing and exit
 codes. This is a deliberate trade-off (speed and simplicity for the
 host-language SDK); it is why the bad-input test applies only to the two
 CLI-invoked SDKs.
 
-## How to run
+## Adapting it to your SDK
 
-Each implementation accepts an ID as a CLI argument; with no argument it
-runs a built-in demo lookup for ID 101. Exit codes: 0 = found, 1 = not
-found, 2 = bad input / data file missing.
+**Add an operation** (the everyday case):
 
-**Python** (from `python/`):
+1. Implement the operation in each language, honouring the
+   [cross-language contract](#the-cross-language-contract).
+2. Register it — one `OperationSpec` entry in `OperationRegistry`
+   (Java class/method/param types, Python script, .NET DLL).
+3. Test it — one `@DataProvider`/`@Test` pair in `SdkOperationTest`;
+   `crossWithSdk()` fans your data rows out across every language.
+
+**Add a language:**
+
+1. Implement `SdkInvocationStrategy` for it (see
+   `PythonInvocationStrategy` for the CLI pattern — ~20 lines); override
+   `availabilityProblem()` if its toolchain may be absent.
+2. Add a constant to the `Sdk` enum and register the strategy in
+   `Invoker`'s strategy map.
+3. Done — every existing test now also runs against the new language.
+
+**Replace the example:** swap the `java/`, `python/`, `dotnet/` folders
+and `data/users.json` with your SDK and fixtures, update the registry
+entry, and keep the test data as your own scenarios.
+
+## The included example: getUserById
+
+The repo ships with one complete worked operation so a fork starts from
+something running: `getUserById(id)` implemented in all three languages,
+each reading the shared flat file `data/users.json` and returning the
+username for a given user ID.
+
+Each implementation also runs standalone (with no argument it does a demo
+lookup for ID 101):
 
 ```
+# from python/
 python get_user_by_id.py 103
-```
 
-**Java** (from `java/`):
+# from java/
+javac GetUserById.java && java GetUserById 102
 
-```
-javac GetUserById.java
-java GetUserById 102
-```
-
-**.NET** (from `dotnet/`, requires .NET 8 SDK):
-
-```
+# from dotnet/ (requires .NET 8 SDK)
 dotnet run -- 104
 ```
 
-## Sample data
+Example data:
 
 | id  | username      |
 |-----|---------------|

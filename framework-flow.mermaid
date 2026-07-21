@@ -16,13 +16,13 @@ flowchart TD
         INV --> DINV[".NET path<br/>ProcessBuilder → dotnet"]
     end
 
-    subgraph SDKS["SDK Implementations (existing, from Milestone 1)"]
+    subgraph SDKS["SDK implementations (example included - swap in your own)"]
         JSDK["java/GetUserById.java<br/>getUserById(id)"]
         PSDK["python/get_user_by_id.py<br/>get_user_by_id(id)"]
         DSDK["dotnet/GetUserById.cs<br/>Lookup(id)"]
     end
 
-    DATA[("data/users.json<br/>shared flat file")]
+    DATA[("data/users.json<br/>shared fixture")]
 
     JINV -- "method call: getUserById(101)" --> JSDK
     PINV -- "CLI: python get_user_by_id.py 101" --> PSDK

@@ -5,7 +5,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * SDK demo method: getUserById (Java implementation).
+ * Example SDK operation: getUserById (Java implementation).
  *
  * Reads user records from the shared flat file (data/users.json) and
  * returns the username for a given user ID.
