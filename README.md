@@ -8,6 +8,16 @@ expectations against every language implementation — Java, Python, and
 .NET out of the box, with a small seam for adding more. Fork it, swap in
 your SDK, and keep the test layer.
 
+> [!TIP]
+> **This repo ships an agent skill:**
+> [`.claude/skills/sdk-framework/SKILL.md`](.claude/skills/sdk-framework/SKILL.md)
+> encodes the framework's workflows — add an operation across all
+> languages, add a language, run and debug the suite. AI coding agents
+> that support the SKILL.md convention (e.g. Claude Code) discover it
+> automatically when you open a clone of this repo, so "add a
+> getOrderStatus operation" becomes a guided, contract-correct change.
+> It reads as plain documentation for everyone else.
+
 ## What this achieves
 
 Teams that ship the same SDK in several languages hit two problems:
@@ -77,6 +87,8 @@ no other knowledge of the language.
 
 ```
 SDK Test Automation Framework/
+├── .claude/skills/sdk-framework/
+│   └── SKILL.md              # agent skill: guided extend/run workflows (see tip above)
 ├── .github/workflows/ci.yml  # GitHub Actions: full suite on every push/PR
 ├── data/
 │   └── users.json            # example shared fixture (single source of truth)
@@ -187,6 +199,10 @@ host-language SDK); it is why the bad-input test applies only to the two
 CLI-invoked SDKs.
 
 ## Adapting it to your SDK
+
+The workflows below are also encoded in the repo's
+[agent skill](.claude/skills/sdk-framework/SKILL.md), so an AI coding
+agent can execute them for you end-to-end.
 
 **Add an operation** (the everyday case):
 
