@@ -1,0 +1,9 @@
+{
+  "users": [
+    { "id": 101, "username": "alice.morgan" },
+    { "id": 102, "username": "bob.sharma" },
+    { "id": 103, "username": "carol.tan" },
+    { "id": 104, "username": "david.oconnor" },
+    { "id": 105, "username": "eva.kapoor" }
+  ]
+}

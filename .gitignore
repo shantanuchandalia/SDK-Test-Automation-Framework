@@ -1,0 +1,19 @@
+# Maven build output
+tests/target/
+
+# .NET build output
+dotnet/bin/
+dotnet/obj/
+
+# Java build output (compiled alongside the source in java/)
+java/*.class
+
+# IDE
+.vs/
+.vscode/
+*.iml
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store

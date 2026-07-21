@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<!-- One test class (SdkOperationTest) covers every operation across all
+     three SDKs; each operation's @DataProvider cross-joins its raw data
+     with Sdk.values(). parallel="methods" + data-provider-thread-count
+     spreads those cases across 3 threads (matching the concurrency the
+     old 3-class/3-thread setup had) since there's no longer one class
+     per SDK to key "parallel=tests" off of. Safe because the SDKs only
+     read the flat file and Invoker is stateless. -->
+<suite name="SDK Automation Suite" verbose="1" parallel="methods" thread-count="3" data-provider-thread-count="3">
+
+  <test name="SDK Operations">
+    <classes>
+      <class name="sdk.tests.SdkOperationTest"/>
+    </classes>
+  </test>
+
+</suite>

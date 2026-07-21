@@ -1,0 +1,75 @@
+%% Drilldown version: shows package/class-level detail (registry, per-language
+%% strategy subpackages, CliSupport, sdk.tests vs sdk.util split). For a
+%% simpler high-level view, see framework-flow.mermaid.
+flowchart TD
+    subgraph MAVEN["Maven Project — sdk-automation-tests (Java + TestNG)"]
+        POM["pom.xml<br/>(TestNG + Surefire plugin)"]
+        XML["testng.xml<br/>(suite: sdk.tests.SdkOperationTest)"]
+        POM --> XML
+
+        subgraph TESTPKG["sdk.tests (actual @Test classes)"]
+            TEST["SdkOperationTest.java<br/>@DataProvider/@Test per operation,<br/>crossed with every Sdk"]
+        end
+        subgraph UTILPKG["sdk.util (shared test utilities, not tests themselves)"]
+            BASE["BaseTest.java<br/>ExtentReports lifecycle + crossWithSdk()"]
+        end
+        XML --> TEST
+        TEST -- extends --> BASE
+
+        subgraph INVPKG["sdk.invoker (invocation framework, separate from test classes)"]
+            INV["Invoker.invoke(...)"]
+            REG["OperationRegistry<br/>operation name → OperationSpec<br/>(add an operation here)"]
+            CLI["CliSupport<br/>shared runCli() helper"]
+
+            subgraph JPKG["sdk.invoker.java"]
+                JSTRAT["JavaInvocationStrategy<br/>reflection, in-JVM"]
+            end
+            subgraph PPKG["sdk.invoker.python"]
+                PSTRAT["PythonInvocationStrategy<br/>ProcessBuilder → python"]
+            end
+            subgraph DPKG["sdk.invoker.dotnet"]
+                DSTRAT["DotnetInvocationStrategy<br/>ProcessBuilder → dotnet"]
+            end
+
+            INV -- "look up spec" --> REG
+            INV --> JSTRAT
+            INV --> PSTRAT
+            INV --> DSTRAT
+            PSTRAT --> CLI
+            DSTRAT --> CLI
+        end
+
+        TEST -- "invoke(sdk, 'getUserById', id)" --> INV
+    end
+
+    subgraph SDKS["SDK Implementations (existing, from Milestone 1)"]
+        JSDK["java/GetUserById.java<br/>getUserById(id)"]
+        PSDK["python/get_user_by_id.py<br/>get_user_by_id(id)"]
+        DSDK["dotnet/GetUserById.cs<br/>Lookup(id)"]
+    end
+
+    DATA[("data/users.json<br/>shared flat file")]
+
+    JSTRAT -- "method call: getUserById(101)" --> JSDK
+    PSTRAT -- "CLI: python get_user_by_id.py 101" --> PSDK
+    DSTRAT -- "CLI: dotnet GetUserById.dll 101" --> DSDK
+
+    JSDK -- reads --> DATA
+    PSDK -- reads --> DATA
+    DSDK -- reads --> DATA
+
+    JSDK -- "return value: 'alice.morgan'" --> JRESP["Invoker.Result"]
+    PSDK -- "stdout: 'alice.morgan' + exit code" --> PRESP["Invoker.Result<br/>(parsed from stdout)"]
+    DSDK -- "stdout: 'alice.morgan' + exit code" --> DRESP["Invoker.Result<br/>(parsed from stdout)"]
+
+    JRESP --> ASSERT["BaseTest.assertResult(...)<br/>expected loaded from test data"]
+    PRESP --> ASSERT
+    DRESP --> ASSERT
+
+    ASSERT --> REPORT["Test Reports<br/>ExtentReports HTML / Surefire<br/>(mvn test)"]
+
+    style MAVEN fill:#e8f0fe,stroke:#4285f4
+    style SDKS fill:#e6f4ea,stroke:#34a853
+    style DATA fill:#fef7e0,stroke:#f9ab00
+    style ASSERT fill:#fce8e6,stroke:#ea4335
+    style REPORT fill:#f3e8fd,stroke:#a142f4
