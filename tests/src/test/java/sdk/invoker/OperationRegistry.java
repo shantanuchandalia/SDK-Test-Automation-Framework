@@ -1,5 +1,7 @@
 package sdk.invoker;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,5 +34,10 @@ public final class OperationRegistry {
             throw new IllegalArgumentException("Unregistered SDK operation: " + operationName);
         }
         return spec;
+    }
+
+    /** Every registered operation, e.g. for toolchain probes that must cover all of them. */
+    public static Collection<OperationSpec> all() {
+        return Collections.unmodifiableCollection(OPERATIONS.values());
     }
 }

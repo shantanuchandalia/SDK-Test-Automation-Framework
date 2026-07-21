@@ -28,20 +28,23 @@ public class GetUserById {
         "data/users.json"       // run from the repo root
     };
 
-    /** Matches objects like {"id": 101, "username": "alice.morgan"} */
-    private static final Pattern USER_PATTERN = Pattern.compile(
-        "\\{\\s*\"id\"\\s*:\\s*(\\d+)\\s*,\\s*\"username\"\\s*:\\s*\"([^\"]*)\"\\s*\\}");
+    /** Matches one user object; id/username are extracted separately so key order does not matter. */
+    private static final Pattern OBJECT_PATTERN = Pattern.compile("\\{[^{}]*\\}");
+    private static final Pattern ID_PATTERN = Pattern.compile("\"id\"\\s*:\\s*(\\d+)");
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("\"username\"\\s*:\\s*\"([^\"]*)\"");
 
     /**
      * Returns the username for the given user ID, or null if not found.
      */
     public static String getUserById(int userId) throws IOException {
         String json = readDataFile();
-        Matcher m = USER_PATTERN.matcher(json);
-        while (m.find()) {
-            int id = Integer.parseInt(m.group(1));
-            if (id == userId) {
-                return m.group(2);
+        Matcher object = OBJECT_PATTERN.matcher(json);
+        while (object.find()) {
+            String user = object.group();
+            Matcher id = ID_PATTERN.matcher(user);
+            if (id.find() && Integer.parseInt(id.group(1)) == userId) {
+                Matcher username = USERNAME_PATTERN.matcher(user);
+                return username.find() ? username.group(1) : null;
             }
         }
         return null;

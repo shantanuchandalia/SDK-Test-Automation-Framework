@@ -1,7 +1,5 @@
 package sdk.invoker;
 
-import java.io.File;
-import java.nio.file.Files;
 import java.util.EnumMap;
 import java.util.Map;
 import sdk.invoker.dotnet.DotnetInvocationStrategy;
@@ -39,12 +37,12 @@ public final class Invoker {
     /** Normalized SDK response. */
     public static final class Result {
         public final int exitCode;
-        public final String username;   // null when not found
-        public final String raw;        // full stdout, for report logging
+        public final String value;   // parsed operation result, null when not found
+        public final String raw;     // full stdout, for report logging
 
-        public Result(int exitCode, String username, String raw) {
+        public Result(int exitCode, String value, String raw) {
             this.exitCode = exitCode;
-            this.username = username;
+            this.value = value;
             this.raw = raw;
         }
     }
@@ -55,16 +53,12 @@ public final class Invoker {
         return STRATEGIES.get(sdk).invoke(spec, args);
     }
 
-    /** Builds the .NET SDK once per suite if its DLL is not present yet. */
-    public static void ensureDotnetBuilt() {
-        File dotnetDir = CliSupport.ROOT.resolve("dotnet").toFile();
-        String dllName = OperationRegistry.get("getUserById").dotnetDll();
-        if (Files.exists(CliSupport.ROOT.resolve("dotnet").resolve(CliSupport.DOTNET_BIN_DIR).resolve(dllName))) {
-            return;
-        }
-        Result build = CliSupport.runCli(dotnetDir, "dotnet", "build", "--verbosity", "quiet");
-        if (build.exitCode != 0) {
-            throw new IllegalStateException(".NET SDK build failed:\n" + build.raw);
-        }
+    /**
+     * Null when {@code sdk} can be exercised on this machine, otherwise the
+     * human-readable reason it can't (e.g. .NET toolchain missing). Lets the
+     * test layer skip that SDK's cases instead of failing the whole suite.
+     */
+    public static String availabilityProblem(Sdk sdk) {
+        return STRATEGIES.get(sdk).availabilityProblem();
     }
 }

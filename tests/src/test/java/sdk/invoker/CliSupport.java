@@ -3,6 +3,7 @@ package sdk.invoker;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
@@ -15,8 +16,13 @@ import java.util.concurrent.TimeUnit;
  */
 public final class CliSupport {
 
-    /** Repo root = parent of the tests/ folder Maven runs from. */
-    public static final Path ROOT = Paths.get(System.getProperty("user.dir")).getParent();
+    /**
+     * Repo root. Overridable with -Dsdk.root=&lt;path&gt;; otherwise discovered
+     * by walking up from the JVM's working directory until the directory
+     * containing data/users.json is found (works for Maven runs from tests/,
+     * runs from the repo root, and IDE TestNG runs alike).
+     */
+    public static final Path ROOT = findRoot();
 
     private static final boolean WINDOWS =
             System.getProperty("os.name").toLowerCase().contains("win");
@@ -27,6 +33,22 @@ public final class CliSupport {
     public static final Path DOTNET_BIN_DIR = Paths.get("bin", "Debug", "net8.0");
 
     private CliSupport() { }
+
+    private static Path findRoot() {
+        String override = System.getProperty("sdk.root");
+        if (override != null && !override.isEmpty()) {
+            return Paths.get(override).toAbsolutePath();
+        }
+        Path start = Paths.get(System.getProperty("user.dir")).toAbsolutePath();
+        for (Path dir = start; dir != null; dir = dir.getParent()) {
+            if (Files.exists(dir.resolve("data").resolve("users.json"))) {
+                return dir;
+            }
+        }
+        throw new IllegalStateException(
+                "Could not locate the repo root (no data/users.json found above "
+                + start + "); pass -Dsdk.root=<repo root> to set it explicitly");
+    }
 
     public static Invoker.Result runCli(File workingDir, String... command) {
         try {
