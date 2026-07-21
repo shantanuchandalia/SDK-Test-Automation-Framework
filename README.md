@@ -54,7 +54,8 @@ subprocesses. Whatever comes back is normalized into one `Result`
 (`exitCode`, parsed `value`, raw output) that the shared assertions in
 `BaseTest` consume.
 
-See [framework-flow.mermaid](framework-flow.mermaid) for the overview and
+The overview diagram is embedded under
+[Architecture flow](#architecture-flow) below; see
 [framework-flow-detailed.mermaid](framework-flow-detailed.mermaid) for the
 package/class-level drilldown.
 
@@ -105,6 +106,60 @@ SDK Test Automation Framework/
 ├── framework-flow.mermaid           # architecture overview diagram
 └── framework-flow-detailed.mermaid  # same flow, package/class-level drilldown
 ```
+
+## Architecture flow
+
+```mermaid
+flowchart TD
+    subgraph MAVEN["Maven Project — sdk-automation-tests (Java + TestNG)"]
+        POM["pom.xml<br/>(TestNG + Surefire plugin)"]
+        XML["testng.xml<br/>(suite: SdkOperationTest)"]
+        POM --> XML
+
+        XML --> TEST["SdkOperationTest.java<br/>one @Test per operation,<br/>run against every SDK"]
+
+        TEST -- "invoke(sdk, 'getUserById', id)" --> INV["Invoker<br/>(single gateway, dispatches per SDK)"]
+
+        INV --> JINV["Java path<br/>direct in-JVM call"]
+        INV --> PINV["Python path<br/>ProcessBuilder → python"]
+        INV --> DINV[".NET path<br/>ProcessBuilder → dotnet"]
+    end
+
+    subgraph SDKS["SDK implementations (example included - swap in your own)"]
+        JSDK["java/GetUserById.java<br/>getUserById(id)"]
+        PSDK["python/get_user_by_id.py<br/>get_user_by_id(id)"]
+        DSDK["dotnet/GetUserById.cs<br/>Lookup(id)"]
+    end
+
+    DATA[("data/users.json<br/>shared fixture")]
+
+    JINV -- "method call: getUserById(101)" --> JSDK
+    PINV -- "CLI: python get_user_by_id.py 101" --> PSDK
+    DINV -- "CLI: dotnet GetUserById.dll 101" --> DSDK
+
+    JSDK -- reads --> DATA
+    PSDK -- reads --> DATA
+    DSDK -- reads --> DATA
+
+    JSDK -- "return value: 'alice.morgan'" --> JRESP["Result"]
+    PSDK -- "stdout: 'alice.morgan' + exit code" --> PRESP["Result<br/>(parsed from stdout)"]
+    DSDK -- "stdout: 'alice.morgan' + exit code" --> DRESP["Result<br/>(parsed from stdout)"]
+
+    JRESP --> ASSERT["Assertion<br/>expected loaded from test data"]
+    PRESP --> ASSERT
+    DRESP --> ASSERT
+
+    ASSERT --> REPORT["Test Reports<br/>ExtentReports HTML / Surefire<br/>(mvn test)"]
+
+    style MAVEN fill:#e8f0fe,stroke:#4285f4
+    style SDKS fill:#e6f4ea,stroke:#34a853
+    style DATA fill:#fef7e0,stroke:#f9ab00
+    style ASSERT fill:#fce8e6,stroke:#ea4335
+    style REPORT fill:#f3e8fd,stroke:#a142f4
+```
+
+The same flow at package/class level lives in
+[framework-flow-detailed.mermaid](framework-flow-detailed.mermaid).
 
 ## Running the suite
 
